@@ -5,9 +5,9 @@
 # ------------------------------------------------------------------------
 
 # === Configuration (adapte selon ton arborescence) ===
-FRAMEWORK_DIR="$HOME/itu/L3/S5/framework"
+FRAMEWORK_DIR="/home/mamitiana/Documents/GitHub/FrameworkMVC"
 BUILD_DIR="$FRAMEWORK_DIR/build"
-TEST_DIR="/var/lib/tomcat10/webapps/testFramework"
+TEST_DIR="/home/mamitiana/Documents/GitHub/Test"
 SERVLET_JAR="$FRAMEWORK_DIR/jakarta.servlet-api_5.0.0.jar"
 
 # === Création des dossiers ===
