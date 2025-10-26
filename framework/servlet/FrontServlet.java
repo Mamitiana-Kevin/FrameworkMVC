@@ -9,8 +9,8 @@ public class FrontServlet extends HttpServlet {
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) 
             throws ServletException, IOException {
-       
-        String urlPath = req.getRequestURI();
+        String originalURI = (String) req.getAttribute("originalURI");
+        String urlPath = originalURI != null ? originalURI : req.getRequestURI();
     
         System.out.println("Vous essayez d'acceder a : " + urlPath);
     
