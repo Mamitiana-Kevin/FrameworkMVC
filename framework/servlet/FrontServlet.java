@@ -9,18 +9,12 @@ public class FrontServlet extends HttpServlet {
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) 
             throws ServletException, IOException {
-
-        String contextPath = req.getContextPath();  
-        String uri = req.getRequestURI();           
-        String relativePath = uri.substring(contextPath.length()); 
-
-        if (relativePath.isEmpty()) {
-            relativePath = "/";
-        }
-
-        System.out.println("FrontServlet reçoit : " + relativePath);
-
+        String originalURI = (String) req.getAttribute("originalURI");
+        String urlPath = originalURI != null ? originalURI : req.getRequestURI();
+    
+        System.out.println("Vous essayez d'acceder a : " + urlPath);
+    
         resp.setContentType("text/html");
-        resp.getWriter().write("<h1>Vous avez demandé : " + relativePath + "</h1>");
+        resp.getWriter().write("<h1>Vous essayez d'acceder a : " + urlPath + "</h1>");
     }
 }
