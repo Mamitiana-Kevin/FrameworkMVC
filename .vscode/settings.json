@@ -1,0 +1,7 @@
+{
+  "java.project.referencedLibraries": [
+    "lib/**/*.jar",
+    "jakarta.servlet-api_5.0.0.jar",
+    "servlet-api.jar"
+  ]
+}
