@@ -19,32 +19,60 @@ public class FrontServlet extends HttpServlet {
         }
     }
 
-    @Override
+        @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-        String urlPath = req.getRequestURI().substring(req.getContextPath().length());
-        String httpMethod = req.getMethod();
+        String originalURI = (String) req.getAttribute("originalURI");
+        String urlPath = originalURI != null ?
+                originalURI.substring(req.getContextPath().length()) :
+                req.getRequestURI().substring(req.getContextPath().length());
 
+        String httpMethod = req.getMethod();
         System.out.println("Request: " + httpMethod + " " + urlPath);
 
         AnnotationReader.MethodHandler handler = AnnotationReader.getHandler(urlPath, httpMethod);
 
         if (handler == null) {
             resp.setStatus(404);
-            resp.getWriter().write("<h1>404 - Not Found: " + urlPath + "</h1>");
+            resp.getWriter().write("<h1>404 - tsy hita lty ehhh!!!: " + urlPath + "</h1>");
             return;
         }
 
         try {
-            // Invoke the controller method (assume it returns String for simplicity)
             Method method = handler.method;
             method.setAccessible(true);
-            Object result = method.invoke(handler.instance, req, resp);
 
-            if (result instanceof String) {
-                resp.getWriter().write((String) result);
+            // SMART PARAMETER INJECTION
+            Class<?>[] paramTypes = method.getParameterTypes();
+            Object[] args = new Object[paramTypes.length];
+
+            for (int i = 0; i < paramTypes.length; i++) {
+                Class<?> type = paramTypes[i];
+                if (type.equals(HttpServletRequest.class)) {
+                    args[i] = req;
+                } else if (type.equals(HttpServletResponse.class)) {
+                    args[i] = resp;
+                } else {
+                    args[i] = null; // for future: @RequestParam, etc.
+                }
             }
+
+            Object result = method.invoke(handler.instance, args);
+
+            // AUTO RESPONSE
+            String responseBody;
+            if (result instanceof String && !((String) result).trim().isEmpty()) {
+                responseBody = (String) result;
+            } else {
+                String controllerName = handler.instance.getClass().getSimpleName();
+                String methodName = handler.method.getName();
+                responseBody = "controller: " + controllerName + "==> method: " + methodName;
+            }
+
+            resp.setContentType("text/html");
+            resp.getWriter().write("<h2>" + responseBody + "</h2>");
+
         } catch (Exception e) {
             resp.setStatus(500);
             resp.getWriter().write("<h1>500 - Error: " + e.getMessage() + "</h1>");

@@ -15,9 +15,11 @@ public class ResourceFilter implements Filter {
         String requestURI = httpRequest.getRequestURI();
         String contextPath = httpRequest.getContextPath();
         String resourcePath = requestURI.substring(contextPath.length());
+
+        // For root URL
         if (resourcePath.equals("/") || resourcePath.isEmpty()) {
             request.setAttribute("originalURI", requestURI);
-            RequestDispatcher dispatcher = request.getRequestDispatcher("/FrontServlet");
+            RequestDispatcher dispatcher = request.getRequestDispatcher("/framework-dispatch");
             dispatcher.forward(request, response);
             return;
         }
@@ -27,10 +29,12 @@ public class ResourceFilter implements Filter {
         File resourceFile = new File(fullResourcePath);
         
         if (resourceFile.exists() && resourceFile.isFile()) {
+            // Let Tomcat serve static files (CSS, JS, images, index.html)
             chain.doFilter(request, response);
         } else {
+            // Not a file → send to FrontServlet
             request.setAttribute("originalURI", requestURI);
-            RequestDispatcher dispatcher = request.getRequestDispatcher("/FrontServlet");
+            RequestDispatcher dispatcher = request.getRequestDispatcher("/framework-dispatch");
             dispatcher.forward(request, response);
         }
     }
