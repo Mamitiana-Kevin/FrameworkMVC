@@ -35,7 +35,7 @@ public class FrontServlet extends HttpServlet {
 
         if (handler == null) {
             resp.setStatus(404);
-            resp.getWriter().write("<h1>404 - tsy hita lty ehhh!!!: " + urlPath + "</h1>");
+            resp.getWriter().write("<h1>404 - tsy hita ohhh!!!: " + urlPath + "</h1>");
             return;
         }
 
