@@ -19,7 +19,7 @@ public class ResourceFilter implements Filter {
         // For root URL
         if (resourcePath.equals("/") || resourcePath.isEmpty()) {
             request.setAttribute("originalURI", requestURI);
-            RequestDispatcher dispatcher = request.getRequestDispatcher("/dispatch");
+            RequestDispatcher dispatcher = request.getRequestDispatcher("/framework-dispatch");
             dispatcher.forward(request, response);
             return;
         }
@@ -34,7 +34,7 @@ public class ResourceFilter implements Filter {
         } else {
             // Not a file → send to FrontServlet
             request.setAttribute("originalURI", requestURI);
-            RequestDispatcher dispatcher = request.getRequestDispatcher("/dispatch");
+            RequestDispatcher dispatcher = request.getRequestDispatcher("/framework-dispatch");
             dispatcher.forward(request, response);
         }
     }
