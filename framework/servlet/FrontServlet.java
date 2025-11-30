@@ -84,14 +84,14 @@ public class FrontServlet extends HttpServlet {
                 String controller = handler.instance.getClass().getSimpleName();
                 String methodName = handler.method.getName();
                 resp.getWriter().write(
-                    "<h2 style='color:green'>controller " + controller +
-                    " method " + methodName + "</h2>"
+                    "controller " + controller +
+                    " method " + methodName 
                 );
             }
 
         } catch (Exception e) {
             resp.setStatus(500);
-            resp.getWriter().write("<h1>500 - Error: " + e.getMessage() + "</h1>");
+            resp.getWriter().write("<h3>500 - Error: " + e.getMessage() + "</h3>");
             e.printStackTrace();
         }
     }
