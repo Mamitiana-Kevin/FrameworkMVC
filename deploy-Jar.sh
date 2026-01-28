@@ -2,7 +2,7 @@
 
 # === Configuration ===
 JAR_SOURCE="testFramework/WEB-INF/lib/framework.jar"          # Path to your JAR file
-TARGET_DIR="/home/mamitiana/Documents/GitHub/Test/WEB-INF/lib"             
+TARGET_DIR="/home/mamitiana/Documents/GitHub/Test/src/main/webapp/WEB-INF/lib/"             
 
 # === Script ===
 echo "Deploying $JAR_SOURCE to Test"
