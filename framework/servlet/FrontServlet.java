@@ -44,15 +44,8 @@ public class FrontServlet extends HttpServlet {
             Method method = handler.method;
             method.setAccessible(true);
 
-            // Smart parameter injection
-            Class<?>[] paramTypes = method.getParameterTypes();
-            Object[] args = new Object[paramTypes.length];
-            for (int i = 0; i < paramTypes.length; i++) {
-                Class<?> type = paramTypes[i];
-                if (type.equals(HttpServletRequest.class)) args[i] = req;
-                else if (type.equals(HttpServletResponse.class)) args[i] = resp;
-                else args[i] = null;
-            }
+            // Smart parameter injection using MethodArgumentResolver
+            Object[] args = framework.core.MethodArgumentResolver.resolveArguments(method, req, resp);
 
             Object result = method.invoke(handler.instance, args);
 

@@ -1,6 +1,6 @@
 @echo off
 echo ============================================
-echo    BUILDING FRAMEWORK.JAR + COPY TO TEST
+echo    BUILDING FRAMEWORK.JAR + COPY TO TEST1
 echo ============================================
 
 rem CHANGE THESE PATHS TO YOUR REAL ONES
@@ -18,7 +18,7 @@ echo 2. Creating directories...
 mkdir %BUILD_DIR% 2>nul
 
 echo 3. Compiling framework sources...
-javac -classpath "%TOMCAT_LIB%" -d "%BUILD_DIR%" ^
+javac -parameters -classpath "%TOMCAT_LIB%" -d "%BUILD_DIR%" ^
     %FRAMEWORK_SRC%\annotation\*.java ^
     %FRAMEWORK_SRC%\core\*.java ^
     %FRAMEWORK_SRC%\servlet\*.java ^
