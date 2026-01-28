@@ -51,6 +51,7 @@ public class MethodArgumentResolver {
                 }
             }
 
+            // HttpServletRequest.getParameter() récupère aussi bien les params GET (URL) que POST (Body)
             value = request.getParameter(paramName);
 
             // Gestion de la valeur par défaut si absent
@@ -59,7 +60,10 @@ public class MethodArgumentResolver {
             }
 
             // Validation : paramètre requis manquant
+            // Un paramètre est manquant si value est null
             if (value == null && required) {
+                // Pour les types primitifs, on ne peut pas passer null, donc c'est une erreur si required=true
+                // Si required=false, on passera la valeur par défaut du primitif (0, false, etc.)
                 throw new IllegalArgumentException("Missing required parameter: " + paramName);
             }
             
@@ -76,6 +80,7 @@ public class MethodArgumentResolver {
         if (value == null) {
             // Valeurs par défaut pour les types primitifs pour éviter NullPointerException
             if (targetType == int.class) return 0;
+            if (targetType == long.class) return 0L;
             if (targetType == double.class) return 0.0;
             if (targetType == boolean.class) return false;
             return null;
@@ -86,6 +91,8 @@ public class MethodArgumentResolver {
                 return value;
             } else if (targetType == int.class || targetType == Integer.class) {
                 return Integer.parseInt(value);
+            } else if (targetType == long.class || targetType == Long.class) {
+                return Long.parseLong(value);
             } else if (targetType == double.class || targetType == Double.class) {
                 return Double.parseDouble(value);
             } else if (targetType == boolean.class || targetType == Boolean.class) {
@@ -95,6 +102,7 @@ public class MethodArgumentResolver {
             System.err.println("Erreur de conversion pour le paramètre : " + value + " vers " + targetType.getName());
             // Retourner la valeur par défaut en cas d'erreur de format
             if (targetType == int.class) return 0;
+            if (targetType == long.class) return 0L;
             if (targetType == double.class) return 0.0;
             return null;
         }
