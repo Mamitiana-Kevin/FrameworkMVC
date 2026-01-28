@@ -1,5 +1,6 @@
 package framework.core;
 
+import framework.annotation.RequestParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.lang.reflect.Method;
@@ -11,7 +12,8 @@ public class MethodArgumentResolver {
      * Résout les arguments d'une méthode contrôleur en fonction de la requête HTTP.
      * Supporte :
      * - Injection de HttpServletRequest et HttpServletResponse
-     * - Binding par nom de paramètre (String, int, double, boolean)
+     * - Annotation @RequestParam
+     * - Binding par nom de paramètre (fallback)
      */
     public static Object[] resolveArguments(Method method, HttpServletRequest request, HttpServletResponse response) {
         Parameter[] parameters = method.getParameters();
@@ -31,12 +33,38 @@ public class MethodArgumentResolver {
                 continue;
             }
 
-            // 2. Binding par nom de paramètre
+            // 2. Gestion de @RequestParam ou Binding par nom
             String paramName = param.getName();
-            String value = request.getParameter(paramName);
+            String value = null;
+            boolean required = false;
+            String defaultValue = null;
+
+            if (param.isAnnotationPresent(RequestParam.class)) {
+                RequestParam requestParam = param.getAnnotation(RequestParam.class);
+                paramName = requestParam.value();
+                required = requestParam.required();
+                defaultValue = requestParam.defaultValue();
+                
+                // Si defaultValue est une chaîne vide, on considère qu'il n'y en a pas
+                if (defaultValue.equals("")) {
+                    defaultValue = null;
+                }
+            }
+
+            value = request.getParameter(paramName);
+
+            // Gestion de la valeur par défaut si absent
+            if (value == null && defaultValue != null) {
+                value = defaultValue;
+            }
+
+            // Validation : paramètre requis manquant
+            if (value == null && required) {
+                throw new IllegalArgumentException("Missing required parameter: " + paramName);
+            }
             
             // DEBUG LOG
-            System.out.println("[MethodArgumentResolver] Param: " + paramName + " (" + type.getSimpleName() + ") => Value from request: " + value);
+            System.out.println("[MethodArgumentResolver] Param: " + paramName + " (" + type.getSimpleName() + ") => Value: " + value);
 
             args[i] = convert(value, type);
         }
