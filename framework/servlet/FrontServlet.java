@@ -5,9 +5,10 @@ import framework.utils.ModelAndView;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
+import java.lang.reflect.Parameter;
+import java.util.*;
 
 public class FrontServlet extends HttpServlet {
 
@@ -46,11 +47,11 @@ public class FrontServlet extends HttpServlet {
             method.setAccessible(true);
 
             // ==================== INJECTION DES PARAMÈTRES ====================
-            Class<?>[] paramTypes = method.getParameterTypes();
-            Object[] args = new Object[paramTypes.length];
+            Parameter[] parameters = method.getParameters();
+            Object[] args = new Object[parameters.length];
 
-            for (int i = 0; i < paramTypes.length; i++) {
-                Class<?> type = paramTypes[i];
+            for (int i = 0; i < parameters.length; i++) {
+                Class<?> type = parameters[i].getType();
 
                 if (type.equals(HttpServletRequest.class)) {
                     args[i] = req;
@@ -58,31 +59,24 @@ public class FrontServlet extends HttpServlet {
                 } else if (type.equals(HttpServletResponse.class)) {
                     args[i] = resp;
 
-                } else if (Map.class.isAssignableFrom(type)) {   
+                } else if (Map.class.isAssignableFrom(type)) {
+                    // Sprint 8 - Map
                     Map<String, Object> formData = new HashMap<>();
-                    Map<String, String[]> parameterMap = req.getParameterMap();
-
-                    for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
-                        String key = entry.getKey();
+                    for (Map.Entry<String, String[]> entry : req.getParameterMap().entrySet()) {
                         String[] values = entry.getValue();
-
-                        if (values.length == 1) {
-                            formData.put(key, values[0]);
-                        } else {
-                            formData.put(key, values); // plusieurs valeurs (checkbox, select multiple...)
-                        }
+                        formData.put(entry.getKey(), values.length == 1 ? values[0] : values);
                     }
                     args[i] = formData;
 
                 } else if (type.equals(String.class)) {
-                    String paramName = method.getParameters()[i].getName();
-                    args[i] = req.getParameter(paramName);
+                    args[i] = req.getParameter(parameters[i].getName());
 
                 } else {
-                    args[i] = null;
+                    // ========== SPRINT 8 bis : Binding d'objet ==========
+                    args[i] = bindObject(type, req, "");
                 }
             }
-            // =================================================================
+            // ================================================================
 
             Object result = method.invoke(handler.instance, args);
 
@@ -99,9 +93,7 @@ public class FrontServlet extends HttpServlet {
                 }
 
                 mv.getModel().forEach(req::setAttribute);
-
-                RequestDispatcher rd = req.getRequestDispatcher(jspPath);
-                rd.forward(req, resp);
+                req.getRequestDispatcher(jspPath).forward(req, resp);
 
             } else if (result instanceof String str && !str.trim().isEmpty()) {
                 resp.setContentType("text/html");
@@ -109,7 +101,7 @@ public class FrontServlet extends HttpServlet {
 
             } else {
                 String controller = handler.instance.getClass().getSimpleName();
-                String methodName = handler.method.getName();
+                String methodName = method.getName();
                 resp.getWriter().write("controller " + controller + " method " + methodName);
             }
 
@@ -118,5 +110,56 @@ public class FrontServlet extends HttpServlet {
             resp.getWriter().write("<h1>500 - Error: " + e.getMessage() + "</h1>");
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Crée une instance de l'objet et remplit ses champs à partir du formulaire.
+     * Supporte les objets imbriqués (ex: adresse.ville)
+     */
+    private Object bindObject(Class<?> clazz, HttpServletRequest req, String prefix) throws Exception {
+        Object instance = clazz.getDeclaredConstructor().newInstance();
+
+        for (Field field : clazz.getDeclaredFields()) {
+            field.setAccessible(true);
+            String fieldName = field.getName();
+            String paramName = prefix.isEmpty() ? fieldName : prefix + "." + fieldName;
+
+            Class<?> fieldType = field.getType();
+
+            // Cas 1 : Type simple (String, int, double, boolean...)
+            if (isSimpleType(fieldType)) {
+                String value = req.getParameter(paramName);
+                if (value != null && !value.isEmpty()) {
+                    field.set(instance, convert(value, fieldType));
+                }
+            }
+            // Cas 2 : Objet imbriqué (ex: Adresse)
+            else if (!fieldType.isPrimitive() && !fieldType.getName().startsWith("java.")) {
+                Object nested = bindObject(fieldType, req, paramName);
+                field.set(instance, nested);
+            }
+            // (Liste plus tard si besoin)
+        }
+
+        return instance;
+    }
+
+    private boolean isSimpleType(Class<?> type) {
+        return type == String.class
+                || type == int.class || type == Integer.class
+                || type == long.class || type == Long.class
+                || type == double.class || type == Double.class
+                || type == boolean.class || type == Boolean.class
+                || type == float.class || type == Float.class;
+    }
+
+    private Object convert(String value, Class<?> targetType) {
+        if (targetType == String.class) return value;
+        if (targetType == int.class || targetType == Integer.class) return Integer.parseInt(value);
+        if (targetType == long.class || targetType == Long.class) return Long.parseLong(value);
+        if (targetType == double.class || targetType == Double.class) return Double.parseDouble(value);
+        if (targetType == boolean.class || targetType == Boolean.class) return Boolean.parseBoolean(value);
+        if (targetType == float.class || targetType == Float.class) return Float.parseFloat(value);
+        return value;
     }
 }
