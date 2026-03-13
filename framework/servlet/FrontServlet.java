@@ -10,6 +10,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
 
+import framework.annotation.Json;
+import framework.utils.JsonUtil;
+
 public class FrontServlet extends HttpServlet {
 
     @Override
@@ -81,6 +84,10 @@ public class FrontServlet extends HttpServlet {
             Object result = method.invoke(handler.instance, args);
 
             // ==================== TRAITEMENT DU RÉSULTAT ====================
+            if (method.isAnnotationPresent(Json.class) && !(result instanceof ModelAndView)) {
+                writeJsonResponse(resp, result);
+                return;
+            }
             if (result instanceof ModelAndView) {
                 ModelAndView mv = (ModelAndView) result;
                 String jspPath = mv.getView();
@@ -110,6 +117,38 @@ public class FrontServlet extends HttpServlet {
             resp.getWriter().write("<h1>500 - Error: " + e.getMessage() + "</h1>");
             e.printStackTrace();
         }
+    }
+
+    private void writeJsonResponse(HttpServletResponse resp, Object result) throws IOException {
+        resp.setContentType("application/json;charset=UTF-8");
+        resp.setCharacterEncoding("UTF-8");
+
+        Object payload;
+
+        if (result instanceof Collection<?> collection) {
+            Map<String, Object> wrapper = new LinkedHashMap<>();
+            wrapper.put("count", collection.size());
+            wrapper.put("data", collection);
+            payload = wrapper;
+
+        } else if (result != null && result.getClass().isArray()) {
+            int length = java.lang.reflect.Array.getLength(result);
+            Map<String, Object> wrapper = new LinkedHashMap<>();
+            wrapper.put("count", length);
+            wrapper.put("data", result);
+            payload = wrapper;
+
+        } else {
+            Map<String, Object> wrapper = new LinkedHashMap<>();
+            wrapper.put("status", "success");
+            wrapper.put("code", 200);
+            wrapper.put("data", result);
+            wrapper.put("message", null);
+            payload = wrapper;
+        }
+
+        resp.setStatus(200);
+        resp.getWriter().write(JsonUtil.toJson(payload));
     }
 
     /**
