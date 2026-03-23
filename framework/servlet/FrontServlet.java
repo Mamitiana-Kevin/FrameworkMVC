@@ -2,17 +2,22 @@ package framework.servlet;
 
 import framework.core.AnnotationReader;
 import framework.utils.ModelAndView;
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.util.*;
-
+import framework.utils.FileUploadUtils;
 import framework.annotation.Json;
 import framework.utils.JsonUtil;
 
+import jakarta.servlet.*;
+import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.http.*;
+import java.io.IOException;
+import java.lang.reflect.*;
+import java.util.*;
+
+@MultipartConfig(
+        fileSizeThreshold = 1024 * 1024 * 2,   // 2 MB
+        maxFileSize = 1024 * 1024 * 10,        // 10 MB
+        maxRequestSize = 1024 * 1024 * 50      // 50 MB
+)
 public class FrontServlet extends HttpServlet {
 
     @Override
@@ -63,19 +68,25 @@ public class FrontServlet extends HttpServlet {
                     args[i] = resp;
 
                 } else if (Map.class.isAssignableFrom(type)) {
-                    // Sprint 8 - Map
-                    Map<String, Object> formData = new HashMap<>();
-                    for (Map.Entry<String, String[]> entry : req.getParameterMap().entrySet()) {
-                        String[] values = entry.getValue();
-                        formData.put(entry.getKey(), values.length == 1 ? values[0] : values);
+
+                    // Vérifie si c'est Map<String, byte[]> → Upload de fichiers
+                    if (isFileMap(parameters[i])) {
+                        args[i] = FileUploadUtils.getUploadedFiles(req);
+                    } else {
+                        // Sprint 8 - Map classique (données formulaire)
+                        Map<String, Object> formData = new HashMap<>();
+                        for (Map.Entry<String, String[]> entry : req.getParameterMap().entrySet()) {
+                            String[] values = entry.getValue();
+                            formData.put(entry.getKey(), values.length == 1 ? values[0] : values);
+                        }
+                        args[i] = formData;
                     }
-                    args[i] = formData;
 
                 } else if (type.equals(String.class)) {
                     args[i] = req.getParameter(parameters[i].getName());
 
                 } else {
-                    // ========== SPRINT 8 bis : Binding d'objet ==========
+                    // Sprint 8 bis : Binding d'objet
                     args[i] = bindObject(type, req, "");
                 }
             }
@@ -88,6 +99,7 @@ public class FrontServlet extends HttpServlet {
                 writeJsonResponse(resp, result);
                 return;
             }
+
             if (result instanceof ModelAndView) {
                 ModelAndView mv = (ModelAndView) result;
                 String jspPath = mv.getView();
@@ -119,6 +131,18 @@ public class FrontServlet extends HttpServlet {
         }
     }
 
+    /**
+     * Vérifie si le paramètre est de type Map<String, byte[]>
+     */
+    private boolean isFileMap(Parameter parameter) {
+        Type genericType = parameter.getParameterizedType();
+        if (genericType instanceof ParameterizedType pt) {
+            Type[] actualTypes = pt.getActualTypeArguments();
+            return actualTypes.length == 2 && actualTypes[1] == byte[].class;
+        }
+        return false;
+    }
+
     private void writeJsonResponse(HttpServletResponse resp, Object result) throws IOException {
         resp.setContentType("application/json;charset=UTF-8");
         resp.setCharacterEncoding("UTF-8");
@@ -132,7 +156,7 @@ public class FrontServlet extends HttpServlet {
             payload = wrapper;
 
         } else if (result != null && result.getClass().isArray()) {
-            int length = java.lang.reflect.Array.getLength(result);
+            int length = Array.getLength(result);
             Map<String, Object> wrapper = new LinkedHashMap<>();
             wrapper.put("count", length);
             wrapper.put("data", result);
@@ -151,10 +175,6 @@ public class FrontServlet extends HttpServlet {
         resp.getWriter().write(JsonUtil.toJson(payload));
     }
 
-    /**
-     * Crée une instance de l'objet et remplit ses champs à partir du formulaire.
-     * Supporte les objets imbriqués (ex: adresse.ville)
-     */
     private Object bindObject(Class<?> clazz, HttpServletRequest req, String prefix) throws Exception {
         Object instance = clazz.getDeclaredConstructor().newInstance();
 
@@ -165,19 +185,15 @@ public class FrontServlet extends HttpServlet {
 
             Class<?> fieldType = field.getType();
 
-            // Cas 1 : Type simple (String, int, double, boolean...)
             if (isSimpleType(fieldType)) {
                 String value = req.getParameter(paramName);
                 if (value != null && !value.isEmpty()) {
                     field.set(instance, convert(value, fieldType));
                 }
-            }
-            // Cas 2 : Objet imbriqué (ex: Adresse)
-            else if (!fieldType.isPrimitive() && !fieldType.getName().startsWith("java.")) {
+            } else if (!fieldType.isPrimitive() && !fieldType.getName().startsWith("java.")) {
                 Object nested = bindObject(fieldType, req, paramName);
                 field.set(instance, nested);
             }
-            // (Liste plus tard si besoin)
         }
 
         return instance;
