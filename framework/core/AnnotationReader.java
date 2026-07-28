@@ -9,7 +9,6 @@ import java.util.*;
 
 public class AnnotationReader {
 
-    // Clé composée "URL:METHODE" -> Handler
     private static final Map<String, MethodHandler> urlToHandler = new HashMap<>();
 
     public static class MethodHandler {
@@ -56,32 +55,17 @@ public class AnnotationReader {
             if (method.isAnnotationPresent(GetMapping.class)) {
                 GetMapping ann = method.getAnnotation(GetMapping.class);
                 String url = ann.value();
-                registerHandler(url, "GET", instance, method);
+                urlToHandler.put(url + ":GET", new MethodHandler(instance, method, "GET"));
+                System.out.println("[REGISTERED] GET " + url + " -> " + method.getName());
             }
 
             if (method.isAnnotationPresent(PostMapping.class)) {
                 PostMapping ann = method.getAnnotation(PostMapping.class);
                 String url = ann.value();
-                registerHandler(url, "POST", instance, method);
+                urlToHandler.put(url + ":POST", new MethodHandler(instance, method, "POST"));
+                System.out.println("[REGISTERED] POST " + url + " -> " + method.getName());
             }
         }
-    }
-
-    private static void registerHandler(String url, String httpMethod, Object instance, Method method) {
-        String key = url + ":" + httpMethod;
-        
-        // Vérification des conflits (Même URL + Même Verbe)
-        if (urlToHandler.containsKey(key)) {
-            MethodHandler existing = urlToHandler.get(key);
-            throw new IllegalStateException(
-                "Duplicate mapping found! " + httpMethod + " " + url + 
-                " is already mapped to " + existing.method.getDeclaringClass().getName() + "." + existing.method.getName() + 
-                " and cannot be mapped to " + method.getDeclaringClass().getName() + "." + method.getName()
-            );
-        }
-
-        urlToHandler.put(key, new MethodHandler(instance, method, httpMethod));
-        System.out.println("[REGISTERED] " + httpMethod + " " + url + " -> " + method.getName());
     }
 
     public static MethodHandler getHandler(String url, String httpMethod) {
